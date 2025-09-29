@@ -9,7 +9,14 @@ load_dotenv()
 
 # The engine is the main entry point to the database, managing connections.
 DATABASE_URL = os.getenv("DATABASE_URL")
-engine = create_engine(DATABASE_URL)
+# New, more resilient line
+engine = create_engine(
+    DATABASE_URL,
+    pool_pre_ping=True,
+    pool_recycle=300,
+    pool_size=10,
+    max_overflow=20
+)
 
 # SessionLocal is a factory that will create new, configured database sessions when called.
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
