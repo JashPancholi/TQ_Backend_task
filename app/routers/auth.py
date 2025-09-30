@@ -1,6 +1,3 @@
-# app/routers/auth.py
-
-# Import necessary modules from FastAPI, SQLAlchemy, and our local files.
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from datetime import timedelta
@@ -21,9 +18,6 @@ def register_user(user: schemas.UserCreate, db: Session = Depends(database.get_d
     db_user = db.query(models.User).filter(models.User.username == user.username).first()
     if db_user:
         raise HTTPException(status_code=400, detail="Username already registered")
-    
-    print(f"Received password for hashing: '{user.password}'")
-    print(f"Length of received password: {len(user.password)}")
 
     # Hash the user's plain-text password before storing it for security.
     hashed_password = security.get_password_hash(user.password)

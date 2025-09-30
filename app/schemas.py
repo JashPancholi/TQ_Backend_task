@@ -1,6 +1,6 @@
-# app/schemas.py
 from pydantic import BaseModel
 import uuid
+import datetime
 
 # User Schemas
 class UserCreate(BaseModel):
@@ -37,4 +37,26 @@ class Item(ItemBase):
 
 # Wallet Schemas
 class WalletSpend(BaseModel):
+    amount: int
+
+class Transaction(BaseModel):
+    id: uuid.UUID
+    item_id: uuid.UUID | None # Use | None for optional fields
+    amount: int
+    timestamp: datetime.datetime
+    type: str
+
+    class Config:
+        from_attributes = True
+
+class TransactionHistory(BaseModel):
+    transactions: list[Transaction]
+
+class AdminItemCreate(BaseModel):
+    name: str
+    price: int
+    stock: int
+
+class AdminCreditWallet(BaseModel):
+    user_id: uuid.UUID
     amount: int

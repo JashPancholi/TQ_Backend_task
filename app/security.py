@@ -1,4 +1,3 @@
-# app/security.py
 import os
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
@@ -17,7 +16,7 @@ ALGORITHM = os.getenv("ALGORITHM")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES"))
 
 # For password hashing
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 
 def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
@@ -66,3 +65,16 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     
     # Return the user object, making it available in the endpoint.
     return user
+
+# Add this new function
+def get_current_admin_user(current_user: models.User = Depends(get_current_user)):
+    """
+    Dependency that checks if the current user's role is 'admin'.
+    If not, it raises a 403 Forbidden error.
+    """
+    if current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="The user does not have privileges to access this resource."
+        )
+    return current_user

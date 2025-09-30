@@ -1,8 +1,7 @@
-# app/main.py
 from fastapi import FastAPI, Depends
 from . import models
 from .database import engine, SessionLocal
-from .routers import auth, wallet, items
+from .routers import auth, wallet, items, admin
 from sqlalchemy.orm import Session
 
 # This creates the database tables
@@ -28,6 +27,7 @@ def startup_event():
 app.include_router(auth.router)
 app.include_router(wallet.router)
 app.include_router(items.router)
+app.include_router(admin.router)
 
 @app.get("/")
 def read_root():

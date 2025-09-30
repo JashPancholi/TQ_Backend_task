@@ -1,60 +1,44 @@
-# app/routers/items.py
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 import uuid
 from typing import List
-
 from .. import schemas, models, security, database
+from .wallet import process_wallet_debit 
 
-# Router for listing and purchasing items.
 router = APIRouter(
     prefix="/items",
     tags=["Items"]
 )
 
-
-# Fetches and returns a list of all available items.
 @router.get("/", response_model=List[schemas.Item])
 def list_items(db: Session = Depends(database.get_db)):
     items = db.query(models.Item).all()
     return items
 
-
-# Allows an authenticated user to purchase an item.
 @router.post("/buy/{item_id}")
 def buy_item(item_id: uuid.UUID, db: Session = Depends(database.get_db), current_user: models.User = Depends(security.get_current_user)):
-    # Find the requested item in the database.
     item = db.query(models.Item).filter(models.Item.id == item_id).first()
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
 
-    # Perform validation checks for stock and user's balance.
     if item.stock <= 0:
         raise HTTPException(status_code=400, detail="Item out of stock")
 
-    user = db.query(models.User).filter(models.User.id == current_user.id).first()
-    if user.wallet_balance < item.price:
-        raise HTTPException(status_code=400, detail="Insufficient funds")
+    # Instead of manually changing the balance, we call our new reusable function.
+    try:
+        updated_user = process_wallet_debit(db=db, user=current_user, amount=item.price, item_id=item.id)
+    except HTTPException as e:
+        raise e
 
-    # Perform the transaction: update user balance and item stock.
-    user.wallet_balance -= item.price
+    # Decrement the item's stock
     item.stock -= 1
-
-    # Log the purchase in the transactions table.
-    new_transaction = models.Transaction(
-        user_id=user.id,
-        item_id=item.id,
-        amount=item.price,
-        type="purchase"
-    )
-    db.add(new_transaction)
     
-    # Commit all changes to the database atomically.
+    # Commit all changes together (user balance, transaction log, and item stock)
     db.commit()
-    db.refresh(user)
+    db.refresh(updated_user) # Refresh the user object to get the latest state
 
     return {
         "message": f"Successfully purchased {item.name}",
-        "new_balance": user.wallet_balance,
+        "new_balance": updated_user.wallet_balance,
         "item_stock_left": item.stock
     }
